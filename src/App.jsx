@@ -151,7 +151,40 @@ function rectsIntersect(a, b) {
     a.top > b.bottom
   );
 }
+function BackgroundWindow({ onSetWallpaper, onClose }) {
+  return (
+    <div className="text-sm bg-white border border-neutral-700 p-4 min-h-[180px]">
+      <div className="font-bold mb-2">Display Properties</div>
+      <p className="mb-4">
+        Change the desktop wallpaper.
+      </p>
 
+      <div className="flex flex-col gap-2">
+       <Button98
+  onClick={() => {
+    onSetWallpaper('default');
+    onClose();
+  }}
+>
+  Default Teal Background
+</Button98>
+
+<Button98
+  onClick={() => {
+    onSetWallpaper('matias');
+    onClose();
+  }}
+>
+  Load Matias.png
+</Button98>
+      </div>
+
+      <p className="mt-4 text-xs text-neutral-600">
+        Matias.png loads as fast as the 90s allowed!
+      </p>
+    </div>
+  );
+}
 function Button98({ children, className = '', onClick }) {
   return (
     <button
@@ -1485,15 +1518,18 @@ function centerWindow(width = 560, height = 320) {
 }
 export default function Windows98ResumePortfolio() {
   const [booted, setBooted] = useState(false);
-  const [startOpen, setStartOpen] = useState(false);
-  const [clock, setClock] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState(null);
-  const [selectionBox, setSelectionBox] = useState(null);
-  const [selectionStart, setSelectionStart] = useState(null);
-  const [shutdown, setShutdown] = useState(false);
-  const welcomeStart = centerWindow(560, 260);
-  
-  const [windows, setWindows] = useState([
+const [startOpen, setStartOpen] = useState(false);
+const [clock, setClock] = useState('');
+const [selectedIcon, setSelectedIcon] = useState(null);
+const [selectionBox, setSelectionBox] = useState(null);
+const [selectionStart, setSelectionStart] = useState(null);
+const [shutdown, setShutdown] = useState(false);
+const [wallpaperMode, setWallpaperMode] = useState('default');
+const [wallpaperReveal, setWallpaperReveal] = useState(0);
+
+const welcomeStart = centerWindow(560, 260);
+
+const [windows, setWindows] = useState([
   {
     id: 'welcome',
     title: 'Welcome',
@@ -1505,7 +1541,36 @@ export default function Windows98ResumePortfolio() {
     isMaximized: false,
   },
 ]);
+
 const [zTop, setZTop] = useState(30);
+useEffect(() => {
+  if (wallpaperMode !== 'matias') {
+    setWallpaperReveal(0);
+    return;
+  }
+
+  setWallpaperReveal(0);
+
+  let frame;
+  let start;
+  const duration = 2800;
+
+  const animate = (timestamp) => {
+    if (!start) start = timestamp;
+    const progress = Math.min((timestamp - start) / duration, 1);
+    const stepped = Math.ceil(progress * 24) / 24;
+    setWallpaperReveal(stepped);
+
+    if (progress < 1) {
+      frame = requestAnimationFrame(animate);
+    }
+  };
+
+  frame = requestAnimationFrame(animate);
+
+  return () => cancelAnimationFrame(frame);
+}, 
+  [wallpaperMode]);
   const songs = useMemo(() => songsSeed, []);
   const resume = useMemo(() => resumeSeed, []);
 
@@ -1555,7 +1620,8 @@ const [zTop, setZTop] = useState(30);
     cloud: { title: 'System Properties / Cloud Control Panel', left: 260, top: 120, width: 720 },
     whyhireme: { title: 'Why hire me? - Notepad', left: 260, top: 150, width: 560 },
     network: { title: 'Network Status', left: 280, top: 140, width: 620 },
-  }[type];
+    background: { title: 'Display Properties', left: 320, top: 160, width: 360 },
+    }[type];
 
   if (!config) return;
 
@@ -1610,152 +1676,187 @@ const updateWindowPosition = (id, pos) => {
   const visibleWindows = windows.filter((w) => !w.minimized);
   return (
     <div
-  className="h-screen w-screen overflow-hidden relative font-sans"
-  style={{ backgroundColor: DESKTOP_BG }}
-  onClick={() => {
-    if (startOpen) setStartOpen(false);
-    setSelectedIcon(null);
-  }}
-  onMouseDown={(e) => {
-    if (e.target !== e.currentTarget) return;
-    setSelectionStart({ x: e.clientX, y: e.clientY });
-    setSelectionBox({ left: e.clientX, top: e.clientY, width: 0, height: 0 });
-  }}
-  onMouseMove={(e) => {
-    if (!selectionStart) return;
-    const left = Math.min(selectionStart.x, e.clientX);
-    const top = Math.min(selectionStart.y, e.clientY);
-    const width = Math.abs(e.clientX - selectionStart.x);
-    const height = Math.abs(e.clientY - selectionStart.y);
-    setSelectionBox({ left, top, width, height });
-  }}
-  onMouseUp={() => {
-    if (!selectionBox) {
-      setSelectionStart(null);
-      return;
-    }
+      className="h-screen w-screen overflow-hidden relative font-sans"
+      style={{ backgroundColor: wallpaperMode === 'default' ? DESKTOP_BG : '#000000' }}
+      onClick={() => {
+        if (startOpen) setStartOpen(false);
+        setSelectedIcon(null);
+      } }
+      onMouseDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        setSelectionStart({ x: e.clientX, y: e.clientY });
+        setSelectionBox({ left: e.clientX, top: e.clientY, width: 0, height: 0 });
+      } }
+      onMouseMove={(e) => {
+        if (!selectionStart) return;
+        const left = Math.min(selectionStart.x, e.clientX);
+        const top = Math.min(selectionStart.y, e.clientY);
+        const width = Math.abs(e.clientX - selectionStart.x);
+        const height = Math.abs(e.clientY - selectionStart.y);
+        setSelectionBox({ left, top, width, height });
+      } }
+      onMouseUp={() => {
+        if (!selectionBox) {
+          setSelectionStart(null);
+          return;
+        }
 
-    const selectionRect = {
-      left: selectionBox.left,
-      top: selectionBox.top,
-      right: selectionBox.left + selectionBox.width,
-      bottom: selectionBox.top + selectionBox.height,
-    };
-
-    const selected = desktopIcons
-      .filter((item) => {
-        const rect = {
-          left: item.x,
-          top: item.y,
-          right: item.x + 96,
-          bottom: item.y + 72,
+        const selectionRect = {
+          left: selectionBox.left,
+          top: selectionBox.top,
+          right: selectionBox.left + selectionBox.width,
+          bottom: selectionBox.top + selectionBox.height,
         };
-        return rectsIntersect(selectionRect, rect);
-      })
-      .map((item) => item.id);
+        
+        const selected = desktopIcons
+          .filter((item) => {
+            const rect = {
+              left: item.x,
+              top: item.y,
+              right: item.x + 96,
+              bottom: item.y + 72,
+            };
+            return rectsIntersect(selectionRect, rect);
+          })
+          .map((item) => item.id);
 
-    setSelectedIcon(selected.length ? selected[0] : null);
-    setSelectionStart(null);
-    setSelectionBox(null);
-  }}
->
+        setSelectedIcon(selected.length ? selected[0] : null);
+        setSelectionStart(null);
+        setSelectionBox(null);
+      } }
+    >
+      <button
+          onClick={(e) => {
+            e.stopPropagation();
+            openWindow('background');
+          } }
+          className="absolute top-4 right-4 z-20 border-t-[2px] border-l-[2px] border-r-[2px] border-b-[2px] border-t-white border-l-white border-r-neutral-700 border-b-neutral-700 bg-[#c0c0c0] px-3 py-1 text-sm"
+        >
+          Background
+        </button>;
+      {wallpaperMode === 'matias' && (
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <img
+          src="/wallpapers/Matias.png"
+          alt="Matias wallpaper"
+          className="w-full h-full object-cover"
+          style={{
+            clipPath: `inset(0 0 ${100 - wallpaperReveal * 100}% 0)`,
+            filter: 'contrast(1.05) saturate(0.95)',
+          }}
+          draggable="false"
+/>
+        </div>
+      )}
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          openWindow('background');
+        } }
+        className="absolute top-4 right-4 z-20 border-t-[2px] border-l-[2px] border-r-[2px] border-b-[2px] border-t-white border-l-white border-r-neutral-700 border-b-neutral-700 bg-[#c0c0c0] px-3 py-1 text-sm"
+      >
+        Background
+      </button>
+
       <div className="absolute inset-0 z-10">
-   {desktopIcons.map((item) => {
-    {selectionBox && (
-  <div
-    className="absolute border border-[#000080] bg-[#0000ff]/20 pointer-events-none"
-    style={{
-      left: selectionBox.left,
-      top: selectionBox.top,
-      width: selectionBox.width,
-      height: selectionBox.height,
-    }}
-  />
-)}
-  return (
-    <button
-  key={item.id}
-  className="absolute flex flex-col items-center w-24 text-white text-xs"
-  style={{ left: item.x, top: item.y }}
-  onClick={(e) => {
-    e.stopPropagation();
-    setSelectedIcon(item.id);
-  }}
-  onDoubleClick={(e) => {
-    e.stopPropagation();
-    openWindow(item.id)
-    ;
-    
-  }}
->
-      <div className="w-8 h-8 flex items-center justify-center mb-1 overflow-visible">
-  <img
-    src={item.icon}
-    alt={item.label}
-    className="w-8 h-8 pixelated drop-shadow"
-    draggable="false"
-    style={{ transform: `scale(${item.scale || 1})` }}
-  />
-</div>
-      <span
-  className={`px-1 text-center ${
-    selectedIcon === item.id
-      ? "bg-[#000080] text-white"
-      : "bg-transparent"
-  }`}
->
-        {item.label}
-      </span>
-    </button>
-  );
-})}
-      </div>
-
-      <AnimatePresence>
-        {visibleWindows.map((w) => (
-         <Window98
-                key={w.id}
-                title={w.title}
-                zIndex={w.z}
-                onClose={() => closeWindow(w.id)}
-                onMinimize={() => minimizeWindow(w.id)}
-                onToggleMaximize={() => toggleMaximizeWindow(w.id)}
-                onFocus={() => bringToFront(w.id)}
-                onDrag={(pos) => updateWindowPosition(w.id, pos)}
-                style={{ left: w.left, top: w.top, width: w.width || 560 }}
-                isMaximized={w.isMaximized}
->
-            {w.type === 'welcome' && (
-              <div className="space-y-4 text-sm">
-                <div className="text-lg font-bold">Welcome to Matias Menarguez OS</div>
-                <p>This interactive portfolio might seem familiar... but no copyright has been infringed -I hope-. </p>
-                <p>Feel free to check my Resume.doc, play some solitaire or ROTLT and listen to some of my music while doing so.</p>
-                <p>You can also launch an MS-DOS prompt to inspect cloud, AI, and systems-oriented commands.</p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button98 onClick={() => openWindow('resume')}>Open Resume.doc</Button98>
-                  <Button98 onClick={() => openWindow('winamp')}>Launch MatiAmp</Button98>
-                  <Button98 onClick={() => openWindow('about')}>About this portfolio</Button98>
-                </div>
+        {desktopIcons.map((item) => {
+          return (
+            <button
+              key={item.id}
+              className="absolute flex flex-col items-center w-24 text-white text-xs"
+              style={{ left: item.x, top: item.y }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedIcon(item.id);
+              } }
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                openWindow(item.id);
+              } }
+            >
+              <div className="w-8 h-8 flex items-center justify-center mb-1 overflow-visible">
+                <img
+                  src={item.icon}
+                  alt={item.label}
+                  className="w-8 h-8 pixelated drop-shadow"
+                  draggable="false"
+                  style={{ transform: `scale(${item.scale || 1})` }} />
               </div>
-            )}
-            {w.type === 'resume' && <ResumeDoc resume={resume} />}
-            {w.type === 'winamp' && <Winamp98 songs={songs} />}
-            {w.type === 'calculator' && <Calculator98 />}
-            {w.type === 'solitaire' && <Solitaire98 />}
-            {w.type === 'portfolio' && <MyComputerWindow onOpen={openWindow} />}
-            {w.type === 'projects' && <ProjectsWindow onOpen={openWindow} />}
-            {w.type === 'about' && <AboutWindow />}
-            {w.type === 'internet' && <InternetExplorerError onClose={() => closeWindow(w.id)} />}
-            {w.type === 'rotlt' && <InternetExplorerWindow />}
-            {w.type === 'dos' && <DosPromptWindow />}
-            {w.type === 'cloud' && <CloudControlPanel />}
-            {w.type === 'whyhireme' && <WhyHireMeWindow />}
-            {w.type === 'network' && <NetworkStatusWindow />}
-          </Window98>
-        ))}
-      </AnimatePresence>
 
-      <div className="absolute bottom-0 left-0 right-0 h-10 bg-[#c0c0c0] border-t-[2px] border-t-white z-50 flex items-center px-1">
+              <span
+                className={`px-1 text-center ${selectedIcon === item.id ? 'bg-[#000080] text-white' : 'bg-transparent'}`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+
+        {selectionBox && (
+          <div
+            className="absolute border border-[#000080] bg-[#0000ff]/20 pointer-events-none"
+            style={{
+              left: selectionBox.left,
+              top: selectionBox.top,
+              width: selectionBox.width,
+              height: selectionBox.height,
+            }} />
+        )}
+      </div>
+      
+<AnimatePresence>
+  {visibleWindows.map((w) => (
+    <Window98
+      key={w.id}
+      title={w.title}
+      zIndex={w.z}
+      onClose={() => closeWindow(w.id)}
+      onMinimize={() => minimizeWindow(w.id)}
+      onToggleMaximize={() => toggleMaximizeWindow(w.id)}
+      onFocus={() => bringToFront(w.id)}
+      onDrag={(pos) => updateWindowPosition(w.id, pos)}
+      style={{ left: w.left, top: w.top, width: w.width || 560 }}
+      isMaximized={w.isMaximized}
+    >
+      {w.type === 'welcome' && (
+        <div className="space-y-4 text-sm">
+          <div className="text-lg font-bold">Welcome to Matias Menarguez OS</div>
+          <p>This interactive portfolio might seem familiar... but no copyright has been infringed -I hope-.</p>
+          <p>Feel free to check my Resume.doc, play some solitaire or ROTLT and listen to some of my music while doing so.</p>
+          <p>You can also launch an MS-DOS prompt to inspect cloud, AI, and systems-oriented commands.</p>
+          <div className="flex gap-2 flex-wrap">
+            <Button98 onClick={() => openWindow('resume')}>Open Resume.doc</Button98>
+            <Button98 onClick={() => openWindow('winamp')}>Launch MatiAmp</Button98>
+            <Button98 onClick={() => openWindow('about')}>About this portfolio</Button98>
+          </div>
+        </div>
+      )}
+
+      {w.type === 'resume' && <ResumeDoc resume={resume} />}
+      {w.type === 'winamp' && <Winamp98 songs={songs} />}
+      {w.type === 'calculator' && <Calculator98 />}
+      {w.type === 'solitaire' && <Solitaire98 />}
+      {w.type === 'portfolio' && <MyComputerWindow onOpen={openWindow} />}
+      {w.type === 'projects' && <ProjectsWindow onOpen={openWindow} />}
+      {w.type === 'about' && <AboutWindow />}
+      {w.type === 'internet' && <InternetExplorerError onClose={() => closeWindow(w.id)} />}
+      {w.type === 'rotlt' && <InternetExplorerWindow />}
+      {w.type === 'dos' && <DosPromptWindow />}
+      {w.type === 'cloud' && <CloudControlPanel />}
+      {w.type === 'whyhireme' && <WhyHireMeWindow />}
+      {w.type === 'network' && <NetworkStatusWindow />}
+      {w.type === 'background' && (
+        <BackgroundWindow
+          onSetWallpaper={setWallpaperMode}
+          onClose={() => closeWindow(w.id)}
+        />
+      )}
+    </Window98>
+  ))}
+</AnimatePresence>
+
+<div className="absolute bottom-0 left-0 right-0 h-10 bg-[#c0c0c0] border-t-[2px] border-t-white z-50 flex items-center px-1">
         <div className="relative" onClick={(e) => e.stopPropagation()}>
           <Button98 onClick={() => setStartOpen((s) => !s)} className="h-8 min-w-[90px] font-bold flex items-center gap-2">
             <div className="w-4 h-4 bg-[#1084d0] rounded-sm" />
@@ -1765,27 +1866,25 @@ const updateWindowPosition = (id, pos) => {
         </div>
 
         <div className="ml-2 flex-1 h-8 flex items-center gap-1 overflow-hidden">
-  {windows.map((w) => (
-    <Button98
-      key={w.id}
-      onClick={() => {
-        if (w.minimized) {
-          setWindows((prev) =>
-            prev.map((item) =>
-              item.id === w.id ? { ...item, minimized: false } : item
-            )
-          );
-          bringToFront(w.id);
-        } else {
-          minimizeWindow(w.id);
-        }
-      }}
-      className="h-8 min-w-[120px] max-w-[180px] truncate text-left"
-    >
-      {w.title}
-    </Button98>
-  ))}
-</div>
+          {windows.map((w) => (
+            <Button98
+              key={w.id}
+              onClick={() => {
+                if (w.minimized) {
+                  setWindows((prev) => prev.map((item) => item.id === w.id ? { ...item, minimized: false } : item
+                  )
+                  );
+                  bringToFront(w.id);
+                } else {
+                  minimizeWindow(w.id);
+                }
+              } }
+              className="h-8 min-w-[120px] max-w-[180px] truncate text-left"
+            >
+              {w.title}
+            </Button98>
+          ))}
+        </div>
 
         <div className="ml-2 h-8 px-3 border-t border-l border-neutral-700 border-r border-b border-white bg-[#c0c0c0] flex items-center gap-2 text-sm">
           <Volume2 className="w-4 h-4" />
